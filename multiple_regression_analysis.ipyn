@@ -1,0 +1,245 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Multiple Linear Regression Evaluation\n",
+    "### Multi-Channel Marketing Analysis\n",
+    "This notebook analyzes a marketing dataset to build a Multiple Linear Regression model, check for multicollinearity, evaluate model performance, and provide data-driven recommendations."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 1. Library Imports & Data Loading"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import pandas as pd\n",
+    "import numpy as np\n",
+    "import matplotlib.pyplot as plt\n",
+    "import statsmodels.api as sm\n",
+    "from statsmodels.stats.outliers_influence import variance_inflation_factor\n",
+    "from scipy import stats\n",
+    "\n",
+    "# Load the dataset\n",
+    "df = pd.read_csv(\"marketing.csv\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 2. Exploratory Data Analysis & Descriptive Statistics"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "print(\"First 5 Rows\")\n",
+    "print(df.head())\n",
+    "\n",
+    "print(\"\\nDataset Information\")\n",
+    "print(df.info())\n",
+    "\n",
+    "print(\"\\nDescriptive Statistics\")\n",
+    "print(df.describe())\n",
+    "\n",
+    "print(\"\\nMissing Values\")\n",
+    "print(df.isnull().sum())"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 3. Multicollinearity Assessment (Correlation & VIF)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "corr_matrix = df[['TV', 'Radio', 'Social Media', 'Sales']].corr()\n",
+    "print(\"\\nCorrelation Matrix\")\n",
+    "print(corr_matrix)\n",
+    "\n",
+    "# Plotting Correlation Matrix Heatmap\n",
+    "plt.figure(figsize=(8,6))\n",
+    "plt.imshow(corr_matrix, cmap='coolwarm', interpolation='nearest')\n",
+    "plt.colorbar()\n",
+    "plt.xticks(range(len(corr_matrix.columns)), corr_matrix.columns, rotation=45)\n",
+    "plt.yticks(range(len(corr_matrix.columns)), corr_matrix.columns)\n",
+    "plt.title(\"Correlation Matrix\")\n",
+    "plt.tight_layout()\n",
+    "plt.show()\n",
+    "\n",
+    "# Calculating VIF\n",
+    "X = df[['TV', 'Radio', 'Social Media']]\n",
+    "vif_data = pd.DataFrame()\n",
+    "vif_data[\"Feature\"] = X.columns\n",
+    "vif_data[\"VIF\"] = [variance_inflation_factor(X.values, i) for i in range(X.shape[1])]\n",
+    "print(\"\\nVariance Inflation Factor (VIF)\")\n",
+    "print(vif_data)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 4. Model Building (Multiple Linear Regression)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "y = df['Sales']\n",
+    "X = sm.add_constant(X)\n",
+    "\n",
+    "# Fit the model\n",
+    "model = sm.OLS(y, X).fit()\n",
+    "\n",
+    "print(\"\\nMultiple Linear Regression Results\")\n",
+    "print(model.summary())\n",
+    "\n",
+    "print(\"\\nAdjusted R-Squared\")\n",
+    "print(model.rsquared_adj)\n",
+    "\n",
+    "print(\"\\nP-Values\")\n",
+    "print(model.pvalues)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 5. Model Assumptions and Residual Diagnostics"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "predictions = model.predict(X)\n",
+    "residuals = model.resid\n",
+    "\n",
+    "# 1. Predicted vs Actual\n",
+    "plt.figure(figsize=(8,5))\n",
+    "plt.scatter(predictions, y)\n",
+    "plt.xlabel(\"Predicted Sales\")\n",
+    "plt.ylabel(\"Actual Sales\")\n",
+    "plt.title(\"Predicted vs Actual Sales\")\n",
+    "plt.show()\n",
+    "\n",
+    "# 2. Residuals vs Fitted (Homoscedasticity check)\n",
+    "plt.figure(figsize=(8,5))\n",
+    "plt.scatter(predictions, residuals)\n",
+    "plt.axhline(y=0, color='r', linestyle='--')\n",
+    "plt.xlabel(\"Predicted Values\")\n",
+    "plt.ylabel(\"Residuals\")\n",
+    "plt.title(\"Residuals vs Fitted Values\")\n",
+    "plt.show()\n",
+    "\n",
+    "# 3. Normal Q-Q Plot\n",
+    "sm.qqplot(residuals, line='45')\n",
+    "plt.title(\"Normal Q-Q Plot\")\n",
+    "plt.show()\n",
+    "\n",
+    "# 4. Histogram of Residuals\n",
+    "plt.figure(figsize=(8,5))\n",
+    "plt.hist(residuals, bins=20, edgecolor='black')\n",
+    "plt.xlabel(\"Residuals\")\n",
+    "plt.ylabel(\"Frequency\")\n",
+    "plt.title(\"Distribution of Residuals\")\n",
+    "plt.show()\n",
+    "\n",
+    "# Formal Normality Test\n",
+    "shapiro_test = stats.shapiro(residuals)\n",
+    "print(\"\\nShapiro-Wilk Test\")\n",
+    "print(shapiro_test)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 6. Business Interpretation & Recommendations"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "coefficients = pd.DataFrame({\n",
+    "    \"Variable\": model.params.index,\n",
+    "    \"Coefficient\": model.params.values\n",
+    "})\n",
+    "print(\"\\nRegression Coefficients\")\n",
+    "print(coefficients)\n",
+    "\n",
+    "print(\"\\nBUSINESS INTERPRETATION\")\n",
+    "for variable, coefficient in model.params.items():\n",
+    "    if variable != 'const':\n",
+    "        print(f\"Holding other variables constant, a one-unit increase in {variable} advertising spend is associated with a {coefficient:.4f} unit change in Sales.\")\n",
+    "\n",
+    "significant_variables = model.pvalues[model.pvalues < 0.05]\n",
+    "print(\"\\nSIGNIFICANT VARIABLES\")\n",
+    "print(significant_variables)\n",
+    "\n",
+    "print(\"\\nRECOMMENDATION\")\n",
+    "if len(significant_variables) > 1:\n",
+    "    best_variable = model.params.drop('const').idxmax()\n",
+    "    print(f\"Prioritize investment in {best_variable} because it has the strongest positive impact on Sales among the predictors.\")\n",
+    "else:\n",
+    "    print(\"Review the statistical significance of predictors before allocating additional budget.\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 7. Project Summary"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "print(\"PROJECT SUMMARY\")\n",
+    "print(f\"Adjusted R-Squared: {model.rsquared_adj:.4f}\")\n",
+    "print(\"Multicollinearity assessed using VIF.\")\n",
+    "print(\"Model assumptions checked using residual diagnostics.\")\n",
+    "print(\"Predictor significance evaluated using p-values.\")\n",
+    "print(\"Business recommendations generated from model coefficients.\")"
+   ]
+  }
+ ],
+ "metadata": {
+  "language_info": {
+   "name": "python"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}
